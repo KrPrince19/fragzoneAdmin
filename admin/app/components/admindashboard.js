@@ -9,14 +9,22 @@ export default function DynamicFormUploader() {
   const [formData, setFormData] = useState({});
   const [status, setStatus] = useState("");
 
+  /* -------- FORMAT TIME TO AM/PM -------- */
+  const formatToAmPm = (value) => {
+    if (!value) return "";
+    const [hour, minute] = value.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${formattedHour}:${minute.toString().padStart(2, "0")} ${period}`;
+  };
+
   const fieldTemplates = {
-    tournament: ["tournamentId","name", "startdate", "enddate"],
-    upcomingtournament: ["tournamentId","name", "startdate", "enddate"],
-    tournamentdetail: ["tournamentId","name", "startdate", "enddate", "map", "prizePool"],
-    upcomingscrim: ["name", "startdate", "time", "match"],
-    mvpplayer: ["name", "teamname", "kill", "imgSrc"],
-    topplayer: ["rank", "playerName", "kill", "teamName", "point", "imgSrc"],
-    rank: ["rank", "playerName", "kill", "teamName", "point"],
+    tournament: ["tournamentId", "name", "startdate", "enddate"],
+    upcomingtournament: ["tournamentId", "name", "startdate", "enddate"],
+    tournamentdetail: ["tournamentId", "name", "startdate", "enddate", "map", "prizePool"],
+    upcomingscrim: ["name", "startdate", "time", "map"],
+    winner: ["name", "teamname", "kill", "imgSrc"],
+    leaderboard: ["rank", "playerName", "kill", "teamName", "point", "imgSrc"],
   };
 
   const handleInputChange = (field, value) => {
@@ -32,7 +40,7 @@ export default function DynamicFormUploader() {
     }
 
     try {
-      const response = await fetch("https://bgmibackend.onrender.com/tournament", {
+      const response = await fetch("http://localhost:5000/tournament", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ collection, data: [formData] }),
@@ -49,7 +57,6 @@ export default function DynamicFormUploader() {
       setFormData({});
       setCollection("");
       setTimeout(() => setStatus(""), 5000);
-
     } catch (err) {
       console.error("❌ Upload failed:", err);
       setStatus("❌ Upload failed.");
@@ -59,14 +66,18 @@ export default function DynamicFormUploader() {
   const currentFields = fieldTemplates[collection] || [];
 
   return (
-    <div className=" -mt-[17px] w-[100%] ">
-      <div className="border-2 border-amber-50 w-full h-[100%] lg:w-[525px] p-6 rounded-2xl lg:mx-88 my-4 bg-gradient-to-br from-purple-700 via-purple-500 to-blue-500 shadow-lg">
-        <h2 className="text-[13px] lg:text-2xl font-bold text-white mb-4">📤 Upload Tournament detail into MongoDB</h2>
+    <div className="-mt-[17px] w-full">
+      <div className="border-2 border-amber-50 w-full lg:w-[525px] p-6 rounded-2xl lg:mx-88 my-4 bg-gradient-to-br from-purple-700 via-purple-500 to-blue-500 shadow-lg">
 
-        <form onSubmit={handleSubmit} className="px-2 sm:px-4 bg-white rounded-xl  p-6 shadow-inner">
+        <h2 className="text-[13px] lg:text-2xl font-bold text-white mb-4">
+          📤 Upload Tournament detail into MongoDB
+        </h2>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl p-6 shadow-inner">
           <label className="text-gray-700 font-semibold">Select Collection:</label>
+
           <select
-            className="border border-gray-300 m-2 rounded-2xl w-full sm:w-auto p-1"
+            className="border border-gray-300 m-2 rounded-2xl w-full p-1"
             value={collection}
             onChange={(e) => {
               setCollection(e.target.value);
@@ -75,13 +86,9 @@ export default function DynamicFormUploader() {
             }}
             required
           >
-            <option className="text-gray-500" value="">
-              -- Select --
-            </option>
+            <option value="">-- Select --</option>
             {Object.keys(fieldTemplates).map((col) => (
-              <option className="text-black font-bold" key={col} value={col}>
-                {col}
-              </option>
+              <option key={col} value={col}>{col}</option>
             ))}
           </select>
 
@@ -89,32 +96,56 @@ export default function DynamicFormUploader() {
 
           {currentFields.map((field) => (
             <div key={field} className="mb-4">
-              <label className="block text-gray-700 font-medium">{field}:</label>
-              <input
-                className="border border-gray-300 rounded-2xl block w-full sm:w-full px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                type="text"
-                value={formData[field] || ""}
-                onChange={(e) => handleInputChange(field, e.target.value)}
-                required
-              />
+              <label className="block text-gray-700 font-medium capitalize">
+                {field}
+              </label>
+
+              {/* 📅 DATE PICKER */}
+              {(field === "startdate" || field === "enddate") && (
+                <input
+                  type="date"
+                  className="border border-gray-300 rounded-2xl block w-full px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500"
+                  value={formData[field] || ""}
+                  onChange={(e) => handleInputChange(field, e.target.value)}
+                  required
+                />
+              )}
+
+              {/* ⏰ TIME PICKER */}
+              {field === "time" && (
+                <input
+                  type="time"
+                  className="border border-gray-300 rounded-2xl block w-full px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) =>
+                    handleInputChange(field, formatToAmPm(e.target.value))
+                  }
+                  required
+                />
+              )}
+
+              {/* ✍️ TEXT INPUT */}
+              {field !== "startdate" && field !== "enddate" && field !== "time" && (
+                <input
+                  type="text"
+                  className="border border-gray-300 rounded-2xl block w-full px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500"
+                  value={formData[field] || ""}
+                  onChange={(e) => handleInputChange(field, e.target.value)}
+                  required
+                />
+              )}
             </div>
           ))}
 
           <button
             type="submit"
-            className="relative inline-flex items-center justify-center p-0.5 mb-2 me-2 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-purple-600 to-blue-500 group-hover:from-purple-600 group-hover:to-blue-500 hover:text-white focus:ring-4 focus:outline-none focus:ring-blue-300"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-br from-purple-600 to-blue-500 hover:opacity-90"
           >
-            <span className="relative px-3 py-2 transition-all ease-in duration-75 bg-white rounded-md group-hover:bg-transparent">
-              Submit
-            </span>
+            Submit
           </button>
         </form>
 
         {status && (
-          <p
-            className="mt-4 text-center font-medium"
-            style={{ color: status.startsWith("✅") ? "green" : "red" }}
-          >
+          <p className={`mt-4 text-center font-medium ${status.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>
             {status}
           </p>
         )}
