@@ -40,7 +40,7 @@ export default function DynamicFormUploader() {
     }
 
     try {
-      const response = await fetch("https://bgmibackend.vercel.app/tournament", {
+      const response = await fetch("https://bgmibackendzm.onrender.com/tournament", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ collection, data: [formData] }),
